@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 9f24edd553d138b479b1e02fd8ff3b40
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - RT_WorldPos: {instanceID: 0}
+  - RT_Normal: {instanceID: 0}
+  - RT_Albedo: {instanceID: 0}
+  - SampleSurfelCS: {fileID: 7200000, guid: 6d00355db14e92f4db4cee326f26738d, type: 3}
+  - surfelReLightCS: {fileID: 7200000, guid: 7e3dc2a9e5db3574a9e55bfa0323fdb3, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

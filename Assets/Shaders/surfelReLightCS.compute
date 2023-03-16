@@ -1,0 +1,116 @@
+#pragma kernel CSMain
+
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+#pragma multi_compile _ _SHADOWS_SOFT
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+#include "SH.hlsl"
+
+struct Surfel
+{
+    float3 position;
+    float3 normal;
+    float3 albedo;
+    float skyMask;
+};
+RWStructuredBuffer<Surfel> _surfels;
+RWStructuredBuffer<float3> _surfelSampleRadiance;
+RWStructuredBuffer<int> _SH2Order;  
+RWStructuredBuffer<int> _probeSH;  
+StructuredBuffer<int> _temporalProbeSH;
+
+// volume param
+float _probeGridSize;
+float4 _probeCorner;
+float4 _probeSize;
+float _sky_Intensity;
+float _gi_Intensity;
+float4 _probePos;
+int _index;
+
+#define probeSHOffSet 27;
+
+
+
+[numthreads(32,16,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint surfelIndex = id.x * 16 + id.y;
+    Surfel surfel = _surfels[surfelIndex];
+
+    // get  main light
+    Light mainLight = GetMainLight();
+
+    // shadow visibility
+    float4 shadowCoord = TransformWorldToShadowCoord(surfel.position);
+    float shadowVisibility = SampleShadowmap(
+        TEXTURE2D_ARGS(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture), 
+        shadowCoord, 
+        GetMainLightShadowSamplingData(), 
+        GetMainLightShadowParams(), 
+        false
+    );
+
+    // compute direct radiance
+    float NdotL = max(dot(surfel.normal, mainLight.direction),0);
+    float3 radiance = surfel.albedo * mainLight.color * NdotL * shadowVisibility * (1.0 - surfel.skyMask);
+
+    // from probe to surfel position
+    float3 dir = normalize(surfel.position - _probePos.xyz);
+
+    // sky light
+    float3 skyColor = SAMPLE_TEXTURECUBE_LOD(_GlossyEnvironmentCubeMap, sampler_GlossyEnvironmentCubeMap, dir, 0).rgb;
+    radiance += skyColor * surfel.skyMask * _sky_Intensity;  
+
+    // for multi-bounce GI
+    float3 history_color= Relight(
+        float4(surfel.position, 1.0), 
+        surfel.albedo, 
+        surfel.normal,
+        _temporalProbeSH, 
+        _probeGridSize,
+        _probeCorner,
+        _probeSize
+    );
+    radiance += history_color * _gi_Intensity;
+
+    // SH projection
+    float nums = 32 * 16;
+    float3 c[9];
+    c[0] = SH(0,  0, dir) * radiance * 4.0 * PI / nums;
+    c[1] = SH(1, -1, dir) * radiance * 4.0 * PI / nums;
+    c[2] = SH(1,  0, dir) * radiance * 4.0 * PI / nums;
+    c[3] = SH(1,  1, dir) * radiance * 4.0 * PI / nums;
+    c[4] = SH(2, -2, dir) * radiance * 4.0 * PI / nums;
+    c[5] = SH(2, -1, dir) * radiance * 4.0 * PI / nums;
+    c[6] = SH(2,  0, dir) * radiance * 4.0 * PI / nums;
+    c[7] = SH(2,  1, dir) * radiance * 4.0 * PI / nums;
+    c[8] = SH(2,  2, dir) * radiance * 4.0 * PI / nums;
+
+    // atom add
+    for(int i=0; i<9; i++)
+    {
+        InterlockedAdd(_SH2Order[i*3+0],Float2Int(c[i].x));
+        InterlockedAdd(_SH2Order[i*3+1],Float2Int(c[i].y));
+        InterlockedAdd(_SH2Order[i*3+2], Float2Int(c[i].z));
+    }
+
+
+    if(_index >= 0)
+    {
+        int offset = _index * probeSHOffSet;
+        for(int i=0; i<9; i++)
+        {
+            InterlockedAdd(_probeSH[offset + i*3+0], Float2Int(c[i].x));
+            InterlockedAdd(_probeSH[offset + i*3+1], Float2Int(c[i].y));
+            InterlockedAdd(_probeSH[offset + i*3+2], Float2Int(c[i].z));
+        }
+    }
+    
+
+    
+    _surfelSampleRadiance[surfelIndex] = radiance;
+}
