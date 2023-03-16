@@ -110,7 +110,4 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         }
     }
     
-
-    
-    _surfelSampleRadiance[surfelIndex] = radiance;
 }

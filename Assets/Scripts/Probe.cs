@@ -24,25 +24,26 @@ public class Probe : MonoBehaviour
     MaterialPropertyBlock matPropBlock;
 
     //probes Gbuffer textures 
-    public RenderTexture RT_WorldPos;
-    public RenderTexture RT_Normal;
-    public RenderTexture RT_Albedo;
+    public RenderTexture WorldPosCubeMap;
+    public RenderTexture NormalCubeMap;
+    public RenderTexture AlbedoCubeMap;
 
 
     // CPU sufel buffer
     public Surfel[] surfels_cpu; 
     // GPU side surfels buffer
     public ComputeBuffer surfels;
+    //To clear SH coefficients
+    int[] SHclearValues;
+    // coefficients of 2order SH
+    public ComputeBuffer SH2Order;
 
     public ComputeShader SampleSurfelCS;
     public ComputeShader surfelReLightCS;
 
-    public ComputeBuffer surfelSampleRadiance;
+   
 
-    //To clear SH coefficients
-    int[] SHclearValues;
-    // coefficients of 2order SH
-    public ComputeBuffer SH2Order; 
+  
 
     [HideInInspector]
     //probe index
@@ -65,9 +66,6 @@ public class Probe : MonoBehaviour
         if (surfels_cpu == null)
             surfels_cpu = new Surfel[surfelNum];
 
-        if (surfelSampleRadiance == null)
-            surfelSampleRadiance = new ComputeBuffer(surfelNum, sizeof(float) * 3);
-
         if (matPropBlock == null)
             matPropBlock = new MaterialPropertyBlock();
 
@@ -83,7 +81,6 @@ public class Probe : MonoBehaviour
     {
         if(surfels!=null) surfels.Release();
         if(SH2Order != null) SH2Order.Release();
-        if(surfelSampleRadiance != null) surfelSampleRadiance.Release();
     }
 
     // relight pass
@@ -95,7 +92,6 @@ public class Probe : MonoBehaviour
         cmd.SetComputeVectorParam(surfelReLightCS, "_probePos", new Vector4(p.x, p.y, p.z, 1.0f));
         cmd.SetComputeBufferParam(surfelReLightCS, kid, "_surfels", surfels);
         cmd.SetComputeBufferParam(surfelReLightCS, kid, "_SH2Order", SH2Order);
-        cmd.SetComputeBufferParam(surfelReLightCS, kid, "_surfelSampleRadiance", surfelSampleRadiance);
 
         var parent = transform.parent;
         IrradianceVolume irradianceVolume;
@@ -147,11 +143,11 @@ public class Probe : MonoBehaviour
        
         //capture Gbuffer for each probe
         SetShader(gameObjects, Shader.Find("PRT/ProbeWorldPos"));
-        camera.RenderToCubemap(RT_WorldPos);
+        camera.RenderToCubemap(WorldPosCubeMap);
         SetShader(gameObjects, Shader.Find("PRT/ProbeNormal"));
-        camera.RenderToCubemap(RT_Normal);
+        camera.RenderToCubemap(NormalCubeMap);
         SetShader(gameObjects, Shader.Find("Universal Render Pipeline/Unlit"));
-        camera.RenderToCubemap(RT_Albedo);
+        camera.RenderToCubemap(AlbedoCubeMap);
 
         // reset shader
         SetShader(gameObjects, Shader.Find("Universal Render Pipeline/Lit"));
@@ -162,9 +158,9 @@ public class Probe : MonoBehaviour
        Vector3 p = gameObject.transform.position;
         var kid = SampleSurfelCS.FindKernel("CSMain");
         SampleSurfelCS.SetVector("_probePos", new Vector4(p.x, p.y, p.z, 1.0f));
-        SampleSurfelCS.SetTexture(kid, "_worldPosCubemap", RT_WorldPos);
-        SampleSurfelCS.SetTexture(kid, "_normalCubemap", RT_Normal);
-        SampleSurfelCS.SetTexture(kid, "_albedoCubemap", RT_Albedo);
+        SampleSurfelCS.SetTexture(kid, "_worldPosCubemap", WorldPosCubeMap);
+        SampleSurfelCS.SetTexture(kid, "_normalCubemap", NormalCubeMap);
+        SampleSurfelCS.SetTexture(kid, "_albedoCubemap", AlbedoCubeMap);
         SampleSurfelCS.SetBuffer(kid, "_surfels", surfels);
 
         SampleSurfelCS.Dispatch(kid, 1, 1, 1);
