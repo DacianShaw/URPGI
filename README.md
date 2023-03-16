@@ -17,6 +17,9 @@ This repository is a project that implements dynamic global illumination in Unit
 5. "Assets/Shaders/SH.hlsl" is to define some helper functions to help relighting.
 6. "Assets/Shaders/Blend.shader" is the shader to blend the direct light and global illumilation.
 
+#### Current Demo
+![demo](https://user-images.githubusercontent.com/55775855/225740895-09f03d9f-ebdd-466f-9fe3-e1338186e56e.png)
+
 ### Files related to Stochastic SSR(need to be further implemented):
 1."Assets/Scripts/DepthNormalFeature.cs",""Assets/Scripts/SSR.cs".
 2."Assets/Shaders/HizGenerator.Shader",”Assets/Shaders/SSReflection.shader".
