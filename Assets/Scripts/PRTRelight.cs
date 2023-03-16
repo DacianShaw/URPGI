@@ -7,14 +7,27 @@ public class PRTRelight : ScriptableRendererFeature
 {
     class PRTRelightPass : ScriptableRenderPass
     {
+
+        public  IrradianceVolume single_volume;
+
         // This method is called before executing the render pass.
         // It can be used to configure render targets and their clear state. Also to create temporary render target textures.
         // When empty this render pass will render to the active camera render target.
         // You should never call CommandBuffer.SetRenderTarget. Instead call <c>ConfigureTarget</c> and <c>ConfigureClear</c>.
         // The render pipeline will ensure target setup and clearing happens in a performant manner.
+
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            
+            IrradianceVolume[] volumes = GameObject.FindObjectsOfType(typeof(IrradianceVolume)) as IrradianceVolume[];
+            if (volumes.Length == 0)
+            {
+                single_volume = null;
+            }
+            else
+            {
+                single_volume = volumes[0];
+            }
+
         }
 
         // Here you can implement the rendering logic.
@@ -24,10 +37,7 @@ public class PRTRelight : ScriptableRendererFeature
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             CommandBuffer cmd = CommandBufferPool.Get();
-
-           
-            IrradianceVolume[] volumes = GameObject.FindObjectsOfType(typeof(IrradianceVolume)) as IrradianceVolume[];
-            IrradianceVolume single_volume = volumes.Length==0 ? null : volumes[0];
+         
             if(single_volume != null)
             {
                 single_volume.SwapTemporalBuffer();
@@ -45,12 +55,15 @@ public class PRTRelight : ScriptableRendererFeature
                 cmd.SetGlobalBuffer("_temporalProbeSH", single_volume.TemporalProbeSH);
             }
 
-            // dispatch
+            // relight every frame for every probe
             Probe[] probes = GameObject.FindObjectsOfType(typeof(Probe)) as Probe[];
             foreach(var probe in probes)
             {
-                if(probe==null) continue;
-                probe.TryInit();
+                if (probe == null)
+                {
+                    continue;
+                }
+                probe.Initialization();
                 probe.ReLight(cmd);
             }
 

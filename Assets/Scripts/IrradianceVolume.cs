@@ -116,7 +116,7 @@ public class IrradianceVolume : MonoBehaviour
                     probes[index] = Instantiate(probePrefab, gameObject.transform) as GameObject;
                     probes[index].transform.position = relativePos + parentPos; 
                     probes[index].GetComponent<Probe>().index = index;
-                    probes[index].GetComponent<Probe>().TryInit();
+                    probes[index].GetComponent<Probe>().Initialization();
                 }
             }
         }

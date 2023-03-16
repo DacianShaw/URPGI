@@ -48,7 +48,7 @@ public class Probe : MonoBehaviour
     //probe index
     public int index = -1; 
 
-    public void TryInit()
+    public void Initialization()
     {
 
         if (surfels == null)
@@ -76,7 +76,7 @@ public class Probe : MonoBehaviour
 
     void Start()
     {
-        TryInit();
+        Initialization();
     }
 
     void OnDestroy()
@@ -134,7 +134,7 @@ public class Probe : MonoBehaviour
 
     public void generateGbuffer()
     {
-        TryInit();
+      
         GameObject go = new GameObject("CaptureCubeMap");
         go.transform.position = transform.position;
         go.transform.rotation = Quaternion.identity;
@@ -155,9 +155,11 @@ public class Probe : MonoBehaviour
 
         // reset shader
         SetShader(gameObjects, Shader.Find("Universal Render Pipeline/Lit"));
+        //initialization
+        Initialization();
 
-        // set necessary data and start sample surfels form Gbuffer
-        Vector3 p = gameObject.transform.position;
+       // set necessary data and start sample surfels form Gbuffer
+       Vector3 p = gameObject.transform.position;
         var kid = SampleSurfelCS.FindKernel("CSMain");
         SampleSurfelCS.SetVector("_probePos", new Vector4(p.x, p.y, p.z, 1.0f));
         SampleSurfelCS.SetTexture(kid, "_worldPosCubemap", RT_WorldPos);
